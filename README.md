@@ -18,3 +18,9 @@ Model prices are listed in [docs/model-pricing.md](docs/model-pricing.md).
 - [ ] Command-line tool
 - [ ] REST API with FastAPI
 - [ ] Docker image and CI
+
+## Usage (planned)
+
+```bash
+python estimator.py --model "Claude Sonnet 5.5" --requests 1000 --input-tokens 800 --output-tokens 300
+```
