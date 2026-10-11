@@ -1,6 +1,6 @@
 # Token Cost Estimator
 
-Estimate and compare monthly API costs for cloud and on-prem LLMs, to support model selection.
+Estimate and compare monthly API costs for cloud and on-prem LLMs, to support model selection and budgeting.
 
 ## Why
 
