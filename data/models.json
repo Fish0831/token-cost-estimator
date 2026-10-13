@@ -1,0 +1,27 @@
+{
+  "GPT-5.6 Terra": {
+    "vendor": "OpenAI",
+    "input_price": 2.00,
+    "output_price": 12.00
+  },
+  "GPT-5.6 Luna": {
+    "vendor": "OpenAI",
+    "input_price": 0.20,
+    "output_price": 1.20
+  },
+  "Claude Sonnet 5.5": {
+    "vendor": "Anthropic",
+    "input_price": 2.00,
+    "output_price": 10.00
+  },
+  "Claude Haiku 5.5": {
+    "vendor": "Anthropic",
+    "input_price": 0.10,
+    "output_price": 0.50
+  },
+  "Gemini 3.8 Flash": {
+    "vendor": "Google",
+    "input_price": 0.75,
+    "output_price": 3.75
+  }
+}
