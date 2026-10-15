@@ -28,6 +28,11 @@ def load_models() -> dict[str, ModelPrice]:
     return models
 
 
+def check_non_negative(name: str, value: int) -> None:
+    if value < 0:
+        raise ValueError(f"{name} must be >= 0, got {value}")
+
+
 def estimate_monthly_cost(
     model: str,
     requests_per_day: int,
@@ -35,7 +40,17 @@ def estimate_monthly_cost(
     output_tokens: int,
     days: int = 30,
 ) -> float:
-    price = load_models()[model]
+    models = load_models()
+    if model not in models:
+        available = ", ".join(models)
+        raise ValueError(f"Unknown model: '{model}'. Available: {available}")
+
+    check_non_negative("requests_per_day", requests_per_day)
+    check_non_negative("input_tokens", input_tokens)
+    check_non_negative("output_tokens", output_tokens)
+    check_non_negative("days", days)
+
+    price = models[model]
 
     cost_per_request = (
         input_tokens * price.input_price
