@@ -14,15 +14,52 @@ Model prices are listed in [docs/model-pricing.md](docs/model-pricing.md).
 ## Roadmap
 
 - [x] Pricing table
-- [ ] Cost estimator in Python
-- [ ] Command-line tool
+- [x] Cost estimator in Python
+- [x] Command-line tool
 - [ ] REST API with FastAPI
 - [ ] Docker image and CI
 
-## Usage (planned)
+## Usage
+
+Requires Python 3.9+.
+
+Estimate one model:
 
 ```bash
-python estimator.py --model "Claude Sonnet 5.5" --requests 1000 --input-tokens 800 --output-tokens 300
+python cli.py --model "Claude Sonnet 5.5" --requests 1000 --input 800 --output 300
+```
+
+```
+Claude Sonnet 5.5: $138.00 / month
+```
+
+Compare all models (omit `--model`):
+
+```bash
+python cli.py --requests 1000 --input 800 --output 300
+```
+
+```
+Claude Haiku 5.5     $    6.90
+GPT-5.6 Luna         $   15.60
+Gemini 3.8 Flash     $   51.75
+Claude Sonnet 5.5    $  138.00
+GPT-5.6 Terra        $  156.00
+```
+
+| Option | Meaning | Default |
+| --- | --- | --- |
+| `--model` | Model name in `data/models.json`; omit to compare all | — |
+| `--requests` | Requests per day | required |
+| `--input` | Input tokens per request | required |
+| `--output` | Output tokens per request | required |
+| `--days` | Days per month | 30 |
+
+Run tests:
+
+```bash
+pip install pytest
+python -m pytest -v
 ```
 
 ## Design
