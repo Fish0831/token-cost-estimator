@@ -60,6 +60,23 @@ def estimate_monthly_cost(
     return cost_per_request * requests_per_day * days
 
 
+def compare_models(
+    requests_per_day: int,
+    input_tokens: int,
+    output_tokens: int,
+    days: int = 30,
+) -> list[tuple[str, float]]:
+    results = []
+    for name in load_models():
+        cost = estimate_monthly_cost(
+            name, requests_per_day, input_tokens, output_tokens, days
+        )
+        results.append((name, cost))
+
+    results.sort(key=lambda item: item[1])
+    return results
+
+
 if __name__ == "__main__":
-    cost = estimate_monthly_cost("Claude Sonnet 5.5", 1000, 800, 300)
-    print(f"Monthly cost: ${cost:.2f}")
+    for name, cost in compare_models(1000, 800, 300):
+        print(f"{name:<20} ${cost:>8.2f}")
