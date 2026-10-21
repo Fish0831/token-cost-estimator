@@ -2,8 +2,12 @@ import sys
 
 from dotenv import load_dotenv
 import anthropic
+from rich.markdown import Markdown
+from rich.markup import escape
+from rich.panel import Panel
 
 from tools import TOOLS, run_tool
+from ui import console, shorten
 
 load_dotenv()
 client = anthropic.Anthropic()
@@ -23,13 +27,15 @@ def run_agent(messages: list) -> str:
     total_in = total_out = 0
 
     for turn in range(1, MAX_TURNS + 1):
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=2000,
-            system=SYSTEM_PROMPT,
-            tools=TOOLS,
-            messages=messages,
-        )
+        # 只有等待 API 時顯示轉圈動畫；工具執行（可能要 y/n 確認）不包在裡面
+        with console.status("[cyan]Agent 思考中…"):
+            response = client.messages.create(
+                model=MODEL,
+                max_tokens=2000,
+                system=SYSTEM_PROMPT,
+                tools=TOOLS,
+                messages=messages,
+            )
         total_in += response.usage.input_tokens
         total_out += response.usage.output_tokens
 
@@ -37,15 +43,20 @@ def run_agent(messages: list) -> str:
 
         if response.stop_reason != "tool_use":
             answer = "".join(b.text for b in response.content if b.type == "text")
-            print(f"\n[共 {turn} 輪，輸入 {total_in} token，輸出 {total_out} token]")
+            console.print(
+                f"[dim]共 {turn} 輪 · 輸入 {total_in} token · 輸出 {total_out} token[/]"
+            )
             return answer
 
         tool_results = []
         for block in response.content:
             if block.type == "tool_use":
-                print(f"[第 {turn} 輪] 呼叫工具 {block.name}，參數 {block.input}")
+                console.print(
+                    f"[yellow]第 {turn} 輪[/] → 呼叫 [bold]{block.name}[/]  "
+                    f"{escape(shorten(str(block.input)))}"
+                )
                 result = run_tool(block.name, block.input)
-                print(f"           結果：{result}")
+                console.print(f"[dim]   結果：{escape(shorten(result, 300))}[/]")
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": block.id,
@@ -58,20 +69,23 @@ def run_agent(messages: list) -> str:
     return "超過最大輪數，Agent 停止。"
 
 
+def show_answer(answer: str) -> None:
+    """把 Agent 的回答用 Markdown 渲染，放進綠色外框。"""
+    console.print(Panel(Markdown(answer), title="Agent", border_style="green"))
+
+
 if __name__ == "__main__":
-    # 單次模式：問題寫在指令後面
     if len(sys.argv) > 1:
-        print("\n" + run_agent([{"role": "user", "content": sys.argv[1]}]))
+        show_answer(run_agent([{"role": "user", "content": sys.argv[1]}]))
         sys.exit()
 
-    # 對話模式：保留 messages，可以一直追問
     messages = []
-    print("成本估算 Agent（輸入 exit 離開）")
+    console.print(Panel("成本估算 Agent（輸入 exit 離開）", border_style="cyan"))
     while True:
-        question = input("\n你：").strip()
+        question = console.input("\n[bold cyan]你：[/]").strip()
         if question.lower() in ("exit", "quit"):
             break
         if not question:
             continue
         messages.append({"role": "user", "content": question})
-        print("\nAgent：" + run_agent(messages))
+        show_answer(run_agent(messages))
