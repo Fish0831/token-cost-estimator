@@ -1,4 +1,5 @@
 import ast
+import csv
 import operator
 import sys
 from pathlib import Path
@@ -16,6 +17,7 @@ from estimator import compare_models, estimate_monthly_cost, load_models
 
 MODEL_NAMES = list(load_models().keys())
 REPORT_DIR = PROJECT_ROOT / "reports"
+USAGE_FILE = PROJECT_ROOT / "data" / "sample_usage.csv"
 
 USAGE_PROPERTIES = {
     "requests_per_day": {"type": "integer", "description": "每天的請求次數"},
@@ -64,6 +66,17 @@ TOOLS = [
         },
     },
     {
+        "name": "read_usage_log",
+        "description": "讀取使用者實際的 API 每日用量紀錄，每一天包含使用的模型、請求次數、每次平均輸入與輸出 token。紀錄範圍是 2026-09-01 到 2026-09-30。當使用者詢問自己的實際用量、上個月的費用、用量是否異常時使用。可以只讀取某段日期。",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "start_date": {"type": "string", "description": "開始日期（含），格式 YYYY-MM-DD；不填代表從第一天開始"},
+                "end_date": {"type": "string", "description": "結束日期（含），格式 YYYY-MM-DD；不填代表到最後一天"},
+            },
+        },
+    },
+    {
         "name": "save_report",
         "description": "把整理好的內容存成 Markdown 報告檔（存在 reports 資料夾）。只有在使用者明確要求存檔或產出報告時才使用。執行前系統會先請使用者確認。",
         "input_schema": {
@@ -99,6 +112,22 @@ def calculate(expression: str) -> str:
 
     value = evaluate(ast.parse(expression, mode="eval").body)
     return f"{expression} = {round(value, 4)}"
+
+
+def read_usage_log(start_date: str = "", end_date: str = "") -> str:
+    with USAGE_FILE.open(encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+
+    if start_date:
+        rows = [r for r in rows if r["date"] >= start_date]
+    if end_date:
+        rows = [r for r in rows if r["date"] <= end_date]
+    if not rows:
+        return "錯誤：這個日期範圍沒有用量紀錄（紀錄範圍是 2026-09-01 到 2026-09-30）"
+
+    header = "date,model,requests,avg_input_tokens,avg_output_tokens"
+    lines = [",".join(r.values()) for r in rows]
+    return f"共 {len(rows)} 天的用量紀錄：\n{header}\n" + "\n".join(lines)
 
 
 def save_report(filename: str, content: str) -> str:
@@ -139,6 +168,8 @@ def run_tool(name: str, args: dict) -> str:
             )
         if name == "calculate":
             return calculate(**args)
+        if name == "read_usage_log":
+            return read_usage_log(**args)
         if name == "save_report":
             return save_report(**args)
         return f"錯誤：沒有叫做 {name} 的工具"

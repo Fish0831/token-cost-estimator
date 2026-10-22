@@ -14,6 +14,7 @@ client = anthropic.Anthropic()
 
 MODEL = "claude-haiku-5-5"
 MAX_TURNS = 10  # 安全上限：最多跑 10 輪，避免無限迴圈
+MAX_TOKENS = 4096  # 每次回應最多輸出的 token 數
 
 SYSTEM_PROMPT = (
     "你是 LLM API 成本顧問，用繁體中文回答。"
@@ -31,13 +32,31 @@ def run_agent(messages: list) -> str:
         with console.status("[cyan]Agent 思考中…"):
             response = client.messages.create(
                 model=MODEL,
-                max_tokens=2000,
+                max_tokens=MAX_TOKENS,
                 system=SYSTEM_PROMPT,
                 tools=TOOLS,
                 messages=messages,
             )
         total_in += response.usage.input_tokens
         total_out += response.usage.output_tokens
+
+        # 回應被截斷：顯示被截斷的內容，而且不把這個不完整的回應加進對話紀錄
+        if response.stop_reason == "max_tokens":
+            console.print(
+                f"[red]第 {turn} 輪的回應超過 max_tokens（{MAX_TOKENS}），被截斷了[/]"
+            )
+            for block in response.content:
+                if block.type == "text":
+                    console.print(f"[red]   截斷前的文字：{escape(shorten(block.text, 300))}[/]")
+                if block.type == "tool_use":
+                    console.print(
+                        f"[red]   截斷前的工具呼叫：{block.name}  "
+                        f"{escape(shorten(str(block.input), 300))}[/]"
+                    )
+            console.print(
+                f"[dim]共 {turn} 輪 · 輸入 {total_in} token · 輸出 {total_out} token[/]"
+            )
+            return "錯誤：回應太長被截斷，沒有完成。請把問題拆小一點再問一次。"
 
         messages.append({"role": "assistant", "content": response.content})
 
@@ -66,7 +85,7 @@ def run_agent(messages: list) -> str:
 
         messages.append({"role": "user", "content": tool_results})
 
-    return "超過最大輪數，Agent 停止。"
+    return "錯誤：超過最大輪數，Agent 停止。"
 
 
 def show_answer(answer: str) -> None:
