@@ -1,3 +1,5 @@
+import ast
+import operator
 import sys
 from pathlib import Path
 
@@ -51,6 +53,17 @@ TOOLS = [
         },
     },
     {
+        "name": "calculate",
+        "description": "計算數學算式，支援 + - * / 和括號。任何數字計算（兩個費用相減、倍數、百分比、換算成一年）都必須使用這個工具，不要自己心算。",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "expression": {"type": "string", "description": "要計算的算式，例如 (138 - 6.9) * 12"},
+            },
+            "required": ["expression"],
+        },
+    },
+    {
         "name": "save_report",
         "description": "把整理好的內容存成 Markdown 報告檔（存在 reports 資料夾）。只有在使用者明確要求存檔或產出報告時才使用。執行前系統會先請使用者確認。",
         "input_schema": {
@@ -63,6 +76,29 @@ TOOLS = [
         },
     },
 ]
+
+ALLOWED_OPERATORS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+
+def calculate(expression: str) -> str:
+    def evaluate(node):
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return node.value
+        if isinstance(node, ast.BinOp) and type(node.op) in ALLOWED_OPERATORS:
+            return ALLOWED_OPERATORS[type(node.op)](evaluate(node.left), evaluate(node.right))
+        if isinstance(node, ast.UnaryOp) and type(node.op) in ALLOWED_OPERATORS:
+            return ALLOWED_OPERATORS[type(node.op)](evaluate(node.operand))
+        raise ValueError("只支援數字、+ - * / 和括號")
+
+    value = evaluate(ast.parse(expression, mode="eval").body)
+    return f"{expression} = {round(value, 4)}"
 
 
 def save_report(filename: str, content: str) -> str:
@@ -101,6 +137,8 @@ def run_tool(name: str, args: dict) -> str:
             return "由便宜到貴：\n" + "\n".join(
                 f"{i}. {n}：${c:.2f}" for i, (n, c) in enumerate(results, 1)
             )
+        if name == "calculate":
+            return calculate(**args)
         if name == "save_report":
             return save_report(**args)
         return f"錯誤：沒有叫做 {name} 的工具"
