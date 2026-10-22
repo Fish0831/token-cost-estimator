@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from estimator import load_models
-from schemas import ModelInfo
+from estimator import estimate_monthly_cost, load_models
+from schemas import EstimateRequest, EstimateResponse, ModelInfo
 
 app = FastAPI()
 
@@ -23,3 +23,13 @@ def list_models(vendor: str | None = None):
 def get_model(name: str):
     models = load_models()
     return models[name]
+
+
+@app.post("/estimate", response_model=EstimateResponse)
+def estimate(request: EstimateRequest):
+    cost = estimate_monthly_cost(**request.model_dump())
+    return EstimateResponse(
+        model=request.model,
+        days=request.days,
+        monthly_cost=round(cost, 2),
+    )
